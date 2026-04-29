@@ -1,0 +1,17 @@
+.{
+    .name = .zrate,
+    .version = "0.0.0",
+    .fingerprint = 0x8be8ef562dd17bf9, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .zctx = .{
+            .url = "https://github.com/dot96gal/zctx/archive/refs/tags/v0.2.0.tar.gz",
+            .hash = "zctx-0.2.0-XRgayRRvAAAvy3Ht6eXb3UhvO0f43yUhtO_v8AvWqUty",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

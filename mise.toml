@@ -1,0 +1,56 @@
+[tools]
+zig = "0.16.0"
+zls = "0.16.0"
+
+[tasks.fmt]
+description = "format"
+run = "zig fmt src/"
+
+[tasks."fmt-check"]
+description = "format check"
+run = "zig fmt --check src/"
+
+[tasks.lint]
+description = "lint"
+run = "zig-lint"
+
+[tasks.build]
+description = "build"
+run = "zig build --summary all"
+
+[tasks.test]
+description = "test"
+run = "zig build test --summary all"
+
+[tasks."example:basic"]
+description = "run example/basic.zig"
+run = "zig build run-example-basic --summary all"
+
+[tasks."example:reserve"]
+description = "run example/reserve.zig"
+run = "zig build run-example-reserve --summary all"
+
+[tasks."example:wait"]
+description = "run example/wait.zig"
+run = "zig build run-example-wait --summary all"
+
+[tasks."example:cancel"]
+description = "run example/cancel.zig"
+run = "zig build run-example-cancel --summary all"
+
+[tasks."example:dynamic"]
+description = "run example/dynamic.zig"
+run = "zig build run-example-dynamic --summary all"
+
+[tasks.build-docs]
+description = "build API documentation"
+run = "zig build docs --summary all"
+
+[tasks.serve-docs]
+description = "serve API documentation"
+depends = ["build-docs"]
+run = "npx --yes serve zig-out/docs"
+
+[tasks.release]
+description = "bump version, commit, tag, and push"
+run = "zig-release $@"
