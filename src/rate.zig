@@ -1,6 +1,7 @@
 const std = @import("std");
 const zctx = @import("zctx");
 const Io = std.Io;
+const NS_PER_SEC: f64 = 1e9;
 
 /// 1秒あたりのイベント数を表す型。レートリミットに利用する。
 pub const Limit = f64;
@@ -12,7 +13,7 @@ pub const INF: Limit = std.math.inf(f64);
 /// interval <= 0 の場合は INF を返す。
 pub fn every(interval: Io.Duration) Limit {
     if (interval.nanoseconds <= 0) return INF;
-    return 1e9 / @as(f64, @floatFromInt(interval.nanoseconds));
+    return NS_PER_SEC / @as(f64, @floatFromInt(interval.nanoseconds));
 }
 
 /// トークン予約を表す型。Reserve 系メソッドの戻り値として利用する。
@@ -49,7 +50,7 @@ pub const Reservation = struct {
         const now = Io.Clock.Timestamp.now(io, .awake).raw;
 
         const elapsedNs = limiter._lastEvent.nanoseconds - r._timeToAct.nanoseconds;
-        const restoreTokens = @as(f64, @floatFromInt(r._tokens)) - (@as(f64, @floatFromInt(elapsedNs)) / 1e9 * r._limit);
+        const restoreTokens = @as(f64, @floatFromInt(r._tokens)) - (@as(f64, @floatFromInt(elapsedNs)) / NS_PER_SEC * r._limit);
 
         if (restoreTokens <= 0) return;
 
@@ -59,7 +60,7 @@ pub const Reservation = struct {
         );
 
         if (r._timeToAct.nanoseconds == limiter._lastEvent.nanoseconds) {
-            const waitNs: i96 = @trunc(@as(f64, @floatFromInt(r._tokens)) / r._limit * 1e9);
+            const waitNs: i96 = @trunc(@as(f64, @floatFromInt(r._tokens)) / r._limit * NS_PER_SEC);
             const prevNs = r._timeToAct.nanoseconds - waitNs;
             if (prevNs >= now.nanoseconds) {
                 limiter._lastEvent = .{ .nanoseconds = prevNs };
@@ -129,7 +130,12 @@ pub const Limiter = struct {
     /// n > _burst の場合は error.ExceedsLimit を返す。
     /// ctx のデッドラインを超える場合は error.DeadlineExceeded を返す。
     pub fn waitN(limiter: *Limiter, io: Io, ctx: zctx.Context, n: usize) WaitError!void {
-        if (n > limiter._burst) return error.ExceedsLimit;
+        limiter._mu.lockUncancelable(io);
+        const currentBurst = limiter._burst;
+        const currentLimit = limiter._limit;
+        limiter._mu.unlock(io);
+
+        if (n > currentBurst and currentLimit != INF) return error.ExceedsLimit;
 
         if (ctx.err(io)) |err| return err;
 
@@ -220,7 +226,7 @@ pub const Limiter = struct {
 
         var waitDurationNs: i96 = 0;
         if (currentTokens < 0) {
-            waitDurationNs = @trunc(-currentTokens / limiter._limit * 1e9);
+            waitDurationNs = @trunc(-currentTokens / limiter._limit * NS_PER_SEC);
         }
 
         const ok = (n <= limiter._burst) and (waitDurationNs <= maxFutureReserve.nanoseconds);
@@ -258,7 +264,7 @@ pub const Limiter = struct {
     fn tokensAt(limiter: *Limiter, t: Io.Timestamp) f64 {
         if (limiter._limit == INF) return @floatFromInt(limiter._burst);
         const elapsedNs = t.nanoseconds - limiter._last.nanoseconds;
-        const delta = @as(f64, @floatFromInt(elapsedNs)) / 1e9 * limiter._limit;
+        const delta = @as(f64, @floatFromInt(elapsedNs)) / NS_PER_SEC * limiter._limit;
         return @min(limiter._tokens + delta, @as(f64, @floatFromInt(limiter._burst)));
     }
 };

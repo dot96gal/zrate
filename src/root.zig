@@ -7,6 +7,7 @@ pub const Reservation = rate.Reservation;
 pub const WaitError = rate.WaitError;
 pub const Limiter = rate.Limiter;
 
+// rate.zig 内のテストを build test に含める
 test {
     _ = @import("rate.zig");
 }
