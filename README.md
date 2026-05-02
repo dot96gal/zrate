@@ -242,12 +242,14 @@ mise install
 | `mise run example:wait` | `waitN()` + タイムアウトコンテキストデモ |
 | `mise run example:cancel` | `waitN()` + キャンセルコンテキストデモ |
 | `mise run example:dynamic` | `setLimit`/`setBurst` による動的変更デモ |
+| `mise run check-updates` | 依存関係の更新確認 |
 
 ### ファイル構成
 
 ```
 build.zig           # ビルドスクリプト
 build.zig.zon       # パッケージメタデータ・依存関係定義
+mise.toml           # 開発タスク定義
 src/
   root.zig          # 公開 API の再エクスポート
   rate.zig          # コア実装（Limiter, Reservation, WaitError）
@@ -257,6 +259,8 @@ example/
   wait.zig          # waitN() + タイムアウトコンテキストデモ
   cancel.zig        # waitN() + キャンセルコンテキストデモ
   dynamic.zig       # setLimit/setBurst による動的変更デモ
+.mise/tasks/
+  check-updates     # 依存関係の更新確認スクリプト
 ```
 
 ### 設計方針
@@ -269,11 +273,10 @@ example/
 
 ### テスト
 
-テストはコアライブラリ（[src/rate.zig](src/rate.zig)）内に 21 件記述されている。時間依存のテストは `allowAt`/`reserveAt` の明示タイムスタンプ引数を使用し、実時間スリープなしで検証している。
+テストはコアライブラリ（[src/rate.zig](src/rate.zig)）内に記述されている。時間依存のテストは `allowAt`/`reserveAt` の明示タイムスタンプ引数を使用し、実時間スリープなしで検証している。
 
 ```sh
 mise run test
-# Build Summary: 3/3 steps succeeded; 21/21 tests passed
 ```
 
 ---

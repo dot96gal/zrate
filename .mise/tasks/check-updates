@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# mise description="check for dependency updates in build.zig.zon"
+set -euo pipefail
+
+ZONFILE="build.zig.zon"
+
+if [ ! -f "$ZONFILE" ]; then
+    echo "error: $ZONFILE not found" >&2
+    exit 1
+fi
+
+urls=$(grep -oE 'https://github\.com/[^/]+/[^/]+/archive/refs/tags/[^"]+\.tar\.gz' "$ZONFILE" || true)
+
+if [ -z "$urls" ]; then
+    echo "no GitHub tag dependencies found in $ZONFILE"
+    exit 0
+fi
+
+has_updates=false
+
+while IFS= read -r url; do
+    owner=$(echo "$url" | sed -E 's|https://github\.com/([^/]+)/([^/]+)/archive/refs/tags/(.+)\.tar\.gz|\1|')
+    repo=$(echo "$url" | sed -E 's|https://github\.com/([^/]+)/([^/]+)/archive/refs/tags/(.+)\.tar\.gz|\2|')
+    current=$(echo "$url" | sed -E 's|https://github\.com/([^/]+)/([^/]+)/archive/refs/tags/(.+)\.tar\.gz|\3|')
+
+    latest=$(curl -sf "https://api.github.com/repos/${owner}/${repo}/tags" | jq -r '.[0].name' 2>/dev/null || true)
+
+    if [ -z "$latest" ]; then
+        echo "warn: could not fetch tags for ${owner}/${repo}" >&2
+        continue
+    fi
+
+    if [ "$current" = "$latest" ]; then
+        printf "ok  %s: %s\n" "$repo" "$current"
+    else
+        printf "ng  %s: %s -> %s (update available)\n" "$repo" "$current" "$latest"
+        has_updates=true
+    fi
+done <<< "$urls"
+
+if $has_updates; then
+    exit 1
+fi
